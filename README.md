@@ -112,3 +112,9 @@ See [`BENCHMARKS.md`](BENCHMARKS.md) for measurement guidance and interpretation
 ## Repository status
 
 This is an active engineering prototype. The browser prototype is directly runnable; Android/KMP source is organized for compilation on a machine with the required Kotlin, Gradle, and Android toolchain. Benchmark numbers should always be collected on the target device or a documented reference machine rather than inferred from source inspection.
+
+## Download for a Samsung phone
+
+The browser prototype opens directly on Samsung Chrome, while the native Android target can be downloaded as an APK. Open the repository's **Actions** tab, choose **Android APK**, select **Run workflow**, and wait for the successful build. Download the `learncraft-space-physics-debug-apk` artifact, extract it, and open `app-debug.apk` on the phone. Android may ask you to allow installation from the file source. This is a debug APK for personal testing; a signed release bundle is still required for Play Store distribution.
+
+The full Android setup, local build commands, and troubleshooting notes are in [`android/README.md`](android/README.md).

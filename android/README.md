@@ -17,3 +17,19 @@ Use Android Studio with JDK 17, Android SDK Platform 35, Build Tools 35.x, and G
 ```
 
 The current sandbox does not have the Android SDK or Gradle command installed, so APK compilation must be completed on an Android development machine or after installing those toolchains.
+
+## Download an APK for a Samsung phone
+
+The repository includes a GitHub Actions workflow at `.github/workflows/android-apk.yml`. Every push that changes `android/**` builds the native debug APK, and the workflow can also be started manually from the **Actions** tab using **Android APK → Run workflow**.
+
+After the workflow completes, open the successful run, scroll to **Artifacts**, and download `learncraft-space-physics-debug-apk`. Extract the ZIP on the Samsung phone or computer; the installable file is `app-debug.apk`. On the phone, open the APK with My Files and allow installation from that source when Android asks. The APK is unsigned debug output intended for personal testing, not Play Store distribution.
+
+| Goal | Command or action |
+|---|---|
+| Build locally | `gradle :app:assembleDebug` from `android/` |
+| APK output | `android/app/build/outputs/apk/debug/app-debug.apk` |
+| Run shared tests | `gradle :shared:test` |
+| Run the benchmark | `gradle :benchmark:run` |
+| Build from GitHub | Actions → Android APK → Run workflow |
+
+For a local build, install Android Studio with JDK 17, Android SDK Platform 35, Build Tools 35.0.0, and Gradle 8.9. The sandbox used to edit this repository does not contain the Android SDK or Gradle executable, so the GitHub Actions workflow is the supported no-local-toolchain route for obtaining the APK.
