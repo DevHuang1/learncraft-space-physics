@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,6 +34,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.isActive
 import kotlin.math.hypot
@@ -46,15 +48,19 @@ class MainActivity : ComponentActivity() {
 
 @androidx.compose.runtime.Composable
 private fun SpacePhysicsApp() {
+    val context = LocalContext.current
     val engine = remember { PhysicsEngine() }
+    val audio = remember { SpatialAudioController(context) }
     val settings = remember { PhysicsSettings() }
     var selected by remember { mutableStateOf<Int?>(null) }
     var viewport by remember { mutableStateOf(Offset.Zero) }
     var draggingId by remember { mutableStateOf<Int?>(null) }
     var showSettings by remember { mutableStateOf(true) }
+    DisposableEffect(audio) { onDispose { audio.close() } }
     val colors = listOf(0xFFA78BFA, 0xFF34D399, 0xFF60A5FA, 0xFFFBBF24, 0xFFF472B6)
 
     LaunchedEffect(Unit) {
+        audio.loadSounds(R.raw.collision, R.raw.gravity_well)
         repeat(220) { i ->
             val angle = (i * 0.618f) % 6.28f
             val radius = 90f + (i % 18) * 20f
@@ -67,7 +73,7 @@ private fun SpacePhysicsApp() {
                 if (previous == 0L) previous = now
                 val dt = ((now - previous) / 1_000_000_000f).coerceIn(0f, .05f)
                 previous = now
-                runner.advance(dt) { fixedSeconds -> engine.step(fixedSeconds, viewport.x.coerceAtLeast(1f), viewport.y.coerceAtLeast(1f), settings, draggingId) }
+                runner.advance(dt) { fixedSeconds -> audio.consume(engine.step(fixedSeconds, viewport.x.coerceAtLeast(1f), viewport.y.coerceAtLeast(1f), settings, draggingId), viewport.x.coerceAtLeast(1f)) }
             }
         }
     }

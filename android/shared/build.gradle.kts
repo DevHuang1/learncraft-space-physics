@@ -8,6 +8,7 @@ kotlin {
     js(IR) { browser() }
     sourceSets {
         commonMain.dependencies { }
+        jsMain.dependencies { implementation("org.jetbrains.kotlinx:kotlinx-browser:0.3") }
         commonTest.dependencies { implementation(kotlin("test")) }
     }
 }

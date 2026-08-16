@@ -51,7 +51,7 @@ Compose owns layout and pointer gestures. A `Canvas` or OpenGL renderer reads th
 
 ## Web adapter
 
-The Web Canvas adapter copies or reads a render snapshot after each fixed-step update, converts pointer coordinates into world coordinates, and uses a Web Audio `StereoPannerNode` for the same events. The browser adapter must initialize audio only from a user gesture.
+The repository now contains a real `shared/src/jsMain` `CanvasPhysicsAdapter`. It owns browser Canvas rendering, pointer coordinates, drag selection, and tap-created gravity wells while calling the common `FixedStepRunner`. The Android adapter loads bundled `res/raw/collision.wav` and `res/raw/gravity_well.wav` through `SpatialAudioController`; the browser audio layer can consume the same `PhysicsEvent` types through a Web Audio `StereoPannerNode`. Browser audio must initialize only from a user gesture.
 
 ## Migration sequence
 
@@ -59,4 +59,4 @@ First move the current Kotlin physics core into `shared/commonMain` and add dete
 
 ## Performance rules
 
-Use a uniform spatial hash with a cell size at least the maximum body diameter, avoid allocations inside the fixed-step loop, reuse event and candidate buffers, keep rendering snapshots separate from mutable physics state, and degrade background rendering before lowering simulation correctness. For 100–500 elements, measure frame time, simulation time, collision candidates, resolved collisions, and audio events per second on both platforms.
+Use a uniform spatial hash with a cell size at least the maximum body diameter, avoid allocations inside the fixed-step loop, reuse event and candidate buffers, keep rendering snapshots separate from mutable physics state, and degrade background rendering before lowering simulation correctness. For 100–500 elements, measure frame time, simulation time, collision candidates, resolved collisions, and audio events per second on both platforms. The `BENCHMARKS.md` guide and `scripts/run-benchmarks.sh` describe JVM, shared-test, JavaScript compilation, and Android build commands.
