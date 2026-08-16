@@ -13,23 +13,25 @@ The Compose Canvas accepts a tap to create a gravity well and a drag gesture to 
 Use Android Studio with JDK 17, Android SDK Platform 35, Build Tools 35.x, and Gradle 8.9 or newer. From this directory:
 
 ```bash
-./gradlew :app:assembleDebug
+gradle :app:assembleRelease
 ```
 
 The current sandbox does not have the Android SDK or Gradle command installed, so APK compilation must be completed on an Android development machine or after installing those toolchains.
 
 ## Download an APK for a Samsung phone
 
-The repository includes a GitHub Actions workflow at `.github/workflows/android-apk.yml`. Every push that changes `android/**` builds the native debug APK, and the workflow can also be started manually from the **Actions** tab using **Android APK → Run workflow**.
+The repository includes a GitHub Actions workflow at `.github/workflows/android-apk.yml`. A manual run from **Actions → Android APK → Run workflow** builds a signed release APK and publishes it as both a workflow artifact and a public GitHub release asset.
 
-After the workflow completes, open the successful run, scroll to **Artifacts**, and download `learncraft-space-physics-debug-apk`. Extract the ZIP on the Samsung phone or computer; the installable file is `app-debug.apk`. On the phone, open the APK with My Files and allow installation from that source when Android asks. The APK is unsigned debug output intended for personal testing, not Play Store distribution.
+Before the first manual run, configure these repository secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. The base64 secret must contain the complete release keystore file encoded without line wrapping. Keep the keystore and passwords private; never commit them to the repository.
+
+After the workflow completes, download `app-release.apk` from the release page or the `learncraft-space-physics-release-apk` artifact. Open it with My Files on the Samsung phone and allow installation from that source if Android asks. The installed control panel displays the app version and version code.
 
 | Goal | Command or action |
 |---|---|
-| Build locally | `gradle :app:assembleDebug` from `android/` |
-| APK output | `android/app/build/outputs/apk/debug/app-debug.apk` |
+| Build locally | `gradle :app:assembleRelease` from `android/` |
+| APK output | `android/app/build/outputs/apk/release/app-release.apk` |
 | Run shared tests | `gradle :shared:test` |
 | Run the benchmark | `gradle :benchmark:run` |
 | Build from GitHub | Actions → Android APK → Run workflow |
 
-For a local build, install Android Studio with JDK 17, Android SDK Platform 35, Build Tools 35.0.0, and Gradle 8.9. The sandbox used to edit this repository does not contain the Android SDK or Gradle executable, so the GitHub Actions workflow is the supported no-local-toolchain route for obtaining the APK.
+For a local signed build, export `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` before running `gradle :app:assembleRelease`. The sandbox used to edit this repository does not contain the Android SDK or Gradle executable, so the GitHub Actions workflow is the supported no-local-toolchain route for obtaining the signed APK.

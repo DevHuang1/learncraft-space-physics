@@ -248,6 +248,11 @@ private fun PhysicsPanel(settings: PhysicsSettings, selected: Int?, onChange: ()
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
+            text = "BUILD ${BuildConfig.VERSION_NAME}  ·  CODE ${BuildConfig.VERSION_CODE}",
+            color = Color(0xFFB9A4FF),
+            style = MaterialTheme.typography.labelSmall,
+        )
+        Text(
             text = if (selected == null) "TOUCH AN ORBITING ELEMENT" else "OBJECT #${selected + 1}",
             color = Color.White,
             style = MaterialTheme.typography.labelMedium,

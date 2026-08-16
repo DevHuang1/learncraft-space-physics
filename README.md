@@ -115,6 +115,6 @@ This is an active engineering prototype. The browser prototype is directly runna
 
 ## Download for a Samsung phone
 
-The browser prototype opens directly on Samsung Chrome, while the native Android target can be downloaded as an APK. Open the repository's **Actions** tab, choose **Android APK**, select **Run workflow**, and wait for the successful build. Download the `learncraft-space-physics-debug-apk` artifact, extract it, and open `app-debug.apk` on the phone. Android may ask you to allow installation from the file source. This is a debug APK for personal testing; a signed release bundle is still required for Play Store distribution.
+The browser prototype opens directly on Samsung Chrome, while the native Android target can be downloaded as a signed APK. Configure the repository secrets documented in [`android/README.md`](android/README.md), then open **Actions → Android APK → Run workflow**. Download `app-release.apk` from the public release asset or the `learncraft-space-physics-release-apk` artifact, extract it if needed, and open it on the phone. Android may ask you to allow installation from the file source. The control panel shows the installed build version and version code.
 
 The full Android setup, local build commands, and troubleshooting notes are in [`android/README.md`](android/README.md).
