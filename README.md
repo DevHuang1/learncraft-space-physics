@@ -2,6 +2,31 @@
 
 A visual-first orbital simulation for LearnCraft, built around a shared Kotlin Multiplatform physics core and platform-specific rendering adapters. The project combines a browser Canvas prototype, Jetpack Compose Android renderer, spatial audio, gravity wells, elastic collisions, drag interaction, and high-density spatial-hash simulation.
 
+## Architecture at a glance
+
+The repository keeps deterministic simulation rules in the shared KMP engine and leaves rendering, input, persistence, and audio to platform adapters. This separation lets Android Compose and browser Canvas consume the same physics behavior.
+
+```mermaid
+flowchart LR
+    A[Android Compose Canvas\nMainActivity.kt] -->|touch input + viewport| C[Shared KMP Physics\ncommonMain]
+    B[Browser Canvas\nindex.html / CanvasPhysicsAdapter] -->|pointer input + frame loop| C
+    C --> D[FixedStepRunner]
+    D --> E[Gravity + nearby attraction]
+    E --> F[Spatial-hash broad phase]
+    F --> G[Elastic collision response]
+    G --> H[PhysicsEvent stream]
+    H --> I[Android SpatialAudioController\nSoundPool + stereo pan]
+    H --> J[Web Audio adapter\nCanvas prototype]
+    C --> K[Benchmark module\nJVM timing + candidate metrics]
+
+    classDef shared fill:#7c3aed,stroke:#c4b5fd,color:#fff;
+    classDef platform fill:#0f766e,stroke:#5eead4,color:#fff;
+    classDef measure fill:#92400e,stroke:#fbbf24,color:#fff;
+    class C,D,E,F,G,H shared;
+    class A,B,I,J platform;
+    class K measure;
+```
+
 ## What is included
 
 | Layer | Location | Purpose |
@@ -30,13 +55,46 @@ Audio begins only after the user enables it because browsers require a user gest
 
 ## Build the Kotlin Multiplatform targets
 
-The Android project expects JDK 17, Android SDK Platform 35, and Gradle 8.9 or newer. From the `android` directory, use the Gradle tasks below:
+The Android project expects JDK 17, Android SDK Platform 35, and Gradle 8.9 or newer. New contributors should first install Git, a JDK, the Android SDK command-line tools, Android SDK Platform 35, and the Android SDK Build Tools required by the selected Gradle/AGP version. Android Studio is recommended for emulator and Compose inspection, but command-line Gradle is sufficient for CI-style builds.
+
+Clone the repository and enter the Android project:
+
+```bash
+git clone https://github.com/DevHuang1/orbital-physics-engine.git
+cd orbital-physics-engine/android
+```
+
+If the repository contains a Gradle wrapper in your checkout, make it executable and use it consistently. If a wrapper is not present, install Gradle 8.9 or newer and confirm the toolchain:
+
+```bash
+java -version
+gradle --version
+adb version
+```
+
+Run the shared tests and compile each target before making changes:
 
 ```bash
 ./gradlew :shared:allTests
-./gradlew :shared:jsBrowserProductionWebpack
-./gradlew :app:assembleDebug
-./gradlew :benchmark:run
+gradle :shared:jsBrowserProductionWebpack
+gradle :app:assembleDebug
+gradle :benchmark:run
+```
+
+For local browser work, the root prototype has no bundler requirement. From the repository root, serve it with a static server:
+
+```bash
+npx serve -l 4173 .
+```
+
+Then open `http://localhost:4173`. Browser audio must be enabled through the interface after a user gesture. For Android iteration, open the `android` directory in Android Studio, select the `app` configuration, attach an emulator or physical device, and run the debug target. The benchmark is JVM-side and should be compared with physical-device frame profiling rather than treated as an Android frame-time guarantee.
+
+A contributor's first validation pass should be:
+
+```bash
+cd ..
+git diff --check
+./scripts/run-benchmarks.sh
 ```
 
 The current sandbox does not include the Gradle wrapper or Android SDK, so Android and Kotlin compilation should be run on a development machine with the stated toolchain.
