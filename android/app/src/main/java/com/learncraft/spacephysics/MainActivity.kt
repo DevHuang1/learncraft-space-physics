@@ -1,11 +1,16 @@
 package com.learncraft.spacephysics
 
 import android.os.Bundle
+import com.learncraft.spacephysics.shared.Body
+import com.learncraft.spacephysics.shared.FixedStepRunner
+import com.learncraft.spacephysics.shared.PhysicsEngine
+import com.learncraft.spacephysics.shared.PhysicsSettings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,13 +60,14 @@ private fun SpacePhysicsApp() {
             val radius = 90f + (i % 18) * 20f
             engine.bodies += Body(i, 640f + kotlin.math.cos(angle.toDouble()).toFloat() * radius, 420f + kotlin.math.sin(angle.toDouble()).toFloat() * radius, 0f, 0f, 0.7f + (i % 5) * .15f, 2f + (i % 4), .82f, colors[i % colors.size])
         }
+        val runner = FixedStepRunner()
         var previous = 0L
         while (isActive) {
             withFrameNanos { now ->
                 if (previous == 0L) previous = now
                 val dt = ((now - previous) / 1_000_000_000f).coerceIn(0f, .05f)
                 previous = now
-                engine.step(dt, viewport.x.coerceAtLeast(1f), viewport.y.coerceAtLeast(1f), settings, draggingId)
+                runner.advance(dt) { fixedSeconds -> engine.step(fixedSeconds, viewport.x.coerceAtLeast(1f), viewport.y.coerceAtLeast(1f), settings, draggingId) }
             }
         }
     }
@@ -99,6 +105,8 @@ private fun SpaceViewport(engine: PhysicsEngine, modifier: Modifier, onSize: (Of
             onDragEnd = onDragEnd,
             onDragCancel = onDragEnd,
         )
+    }.pointerInput("gravity-wells") {
+        detectTapGestures(onTap = { offset -> engine.wells += com.learncraft.spacephysics.shared.GravityWell(offset.x, offset.y) })
     }) {
         onSize(Offset(size.width, size.height))
         drawRect(Color(0xFF070B16))
