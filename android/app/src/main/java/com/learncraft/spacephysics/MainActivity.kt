@@ -8,9 +8,16 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -58,6 +65,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -87,6 +95,7 @@ private val OrbitViolet = Color(0xFF8B5CF6)
 private val OrbitMint = Color(0xFF34D399)
 private val OrbitBlue = Color(0xFF60A5FA)
 private val OrbitGold = Color(0xFFFBBF24)
+private val OrbitRose = Color(0xFFF43F5E)
 private val MutedSpaceText = Color(0xFFA6AEC8)
 
 private enum class NativePage { HOME, EXPERIMENTS, SAVED, SETTINGS, SIMULATOR }
@@ -173,8 +182,9 @@ private fun SpacePhysicsApp(simulationEnabled: Boolean) {
                 AnimatedContent(
                     targetState = page,
                     transitionSpec = {
-                        (fadeIn(animationSpec = tween(220)) + slideInVertically(animationSpec = tween(220)) { it / 12 }) togetherWith
-                            (fadeOut(animationSpec = tween(140)) + slideOutVertically(animationSpec = tween(140)) { -it / 18 })
+                        val duration = if (preferences.reducedMotion) 0 else 280
+                        (fadeIn(animationSpec = tween(duration)) + scaleIn(initialScale = .985f, animationSpec = tween(duration)) + slideInVertically(animationSpec = tween(duration)) { it / 18 }) togetherWith
+                            (fadeOut(animationSpec = tween(if (preferences.reducedMotion) 0 else 160)) + scaleOut(targetScale = .99f, animationSpec = tween(if (preferences.reducedMotion) 0 else 160)) + slideOutVertically(animationSpec = tween(if (preferences.reducedMotion) 0 else 160)) { -it / 24 })
                     },
                     label = "native-orbital-page",
                 ) { destination ->
@@ -226,15 +236,31 @@ private fun SpacePhysicsApp(simulationEnabled: Boolean) {
 
 @Composable
 private fun OrbitalNavigationLoader(destination: NativePage) {
+    val infiniteTransition = rememberInfiniteTransition(label = "loading-orbit")
+    val phase by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 6.28318f,
+        animationSpec = infiniteRepeatable(tween(1300, easing = LinearEasing), RepeatMode.Restart),
+        label = "loading-orbit-phase",
+    )
     Surface(
         modifier = Modifier.fillMaxSize().semantics { contentDescription = "Loading ${destination.name.lowercase()} page" },
-        color = SpaceNavy.copy(alpha = .82f),
+        color = SpaceNavy.copy(alpha = .93f),
     ) {
         Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(color = OrbitViolet, strokeWidth = 3.dp)
-            Spacer(Modifier.height(14.dp))
-            Text("ALIGNING ORBIT…", color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-            Text(destination.name.lowercase().replaceFirstChar { it.uppercase() }, color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
+            Canvas(modifier = Modifier.size(116.dp)) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                drawCircle(Brush.radialGradient(listOf(OrbitViolet.copy(alpha = .55f), Color.Transparent), center, size.minDimension * .48f), radius = size.minDimension * .48f, center = center)
+                drawCircle(OrbitViolet.copy(alpha = .48f), radius = size.minDimension * .37f, center = center, style = Stroke(1.6f))
+                drawCircle(OrbitBlue.copy(alpha = .3f), radius = size.minDimension * .24f, center = center, style = Stroke(1.2f))
+                drawCircle(OrbitViolet, radius = 15f, center = center)
+                drawCircle(Color(0xFFD8CCFF), radius = 5f, center = center)
+                val satellite = Offset(center.x + cos(phase) * size.minDimension * .37f, center.y + sin(phase) * size.minDimension * .37f)
+                drawCircle(OrbitMint, radius = 5f, center = satellite)
+            }
+            Spacer(Modifier.height(16.dp))
+            Text("ALIGNING ORBIT", color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(destination.name.lowercase().replaceFirstChar { it.uppercase() } + " experience", color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -245,58 +271,80 @@ private fun OrbitalHomePage(
     onStart: () -> Unit,
     savedCount: Int,
 ) {
-    Column(modifier = Modifier.fillMaxSize().background(SpaceNavy).padding(20.dp)) {
-        Text("LEARNCRAFT SPACE PHYSICS", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        Text("ORBITAL MODE  /  FREE ROAM", color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
-        Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-            OrbitalBackdrop(Modifier.fillMaxSize())
-            OrbitalNode(
-                label = "EXPERIMENTS",
-                caption = "Physics labs",
-                tint = OrbitMint,
-                modifier = Modifier.align(Alignment.TopEnd).offset((-10).dp, 64.dp),
-                onClick = { onNavigate(NativePage.EXPERIMENTS) },
-            )
-            OrbitalNode(
-                label = "SAVED",
-                caption = "$savedCount local states",
-                tint = OrbitBlue,
-                modifier = Modifier.align(Alignment.BottomEnd).offset((-10).dp, (-78).dp),
-                onClick = { onNavigate(NativePage.SAVED) },
-            )
-            OrbitalNode(
-                label = "SETTINGS",
-                caption = "Sound & motion",
-                tint = OrbitGold,
-                modifier = Modifier.align(Alignment.BottomStart).offset(10.dp, (-78).dp),
-                onClick = { onNavigate(NativePage.SETTINGS) },
-            )
-            OrbitalNode(
-                label = "HOME",
-                caption = "Mission control",
-                tint = OrbitViolet,
-                modifier = Modifier.align(Alignment.TopStart).offset(10.dp, 64.dp),
-                onClick = { },
-            )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Surface(
-                    modifier = Modifier.size(150.dp).semantics { contentDescription = "Open Physics Core" }.clickable(onClick = onStart),
-                    shape = CircleShape,
-                    color = OrbitViolet.copy(alpha = .84f),
-                    shadowElevation = 12.dp,
-                ) {
-                    Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("PHYSICS", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        Text("CORE", color = Color.White.copy(alpha = .75f), style = MaterialTheme.typography.labelMedium)
-                        Spacer(Modifier.height(8.dp))
-                        Text("TAP TO LAUNCH", color = Color.White, style = MaterialTheme.typography.labelSmall)
-                    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        OrbitalBackdrop(Modifier.fillMaxSize())
+        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text("LEARNCRAFT", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("SPACE PHYSICS  /  FREE ROAM", color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
                 }
-                Spacer(Modifier.height(14.dp))
-                Text("Tap an orbiting world to navigate", color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
+                Surface(shape = RoundedCornerShape(50), color = OrbitMint.copy(alpha = .13f), border = androidx.compose.foundation.BorderStroke(1.dp, OrbitMint.copy(alpha = .5f))) {
+                    Text("FIELD ONLINE", color = OrbitMint, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp))
+                }
+            }
+            Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                OrbitalNode(
+                    label = "EXPERIMENTS",
+                    caption = "Physics labs",
+                    tint = OrbitMint,
+                    modifier = Modifier.align(Alignment.TopEnd).offset((-10).dp, 64.dp),
+                    onClick = { onNavigate(NativePage.EXPERIMENTS) },
+                )
+                OrbitalNode(
+                    label = "SAVED",
+                    caption = "$savedCount local states",
+                    tint = OrbitBlue,
+                    modifier = Modifier.align(Alignment.BottomEnd).offset((-10).dp, (-78).dp),
+                    onClick = { onNavigate(NativePage.SAVED) },
+                )
+                OrbitalNode(
+                    label = "SETTINGS",
+                    caption = "Sound & motion",
+                    tint = OrbitGold,
+                    modifier = Modifier.align(Alignment.BottomStart).offset(10.dp, (-78).dp),
+                    onClick = { onNavigate(NativePage.SETTINGS) },
+                )
+                OrbitalNode(
+                    label = "HOME",
+                    caption = "Mission control",
+                    tint = OrbitViolet,
+                    modifier = Modifier.align(Alignment.TopStart).offset(10.dp, 64.dp),
+                    onClick = { },
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    PhysicsCoreButton(onStart)
+                    Spacer(Modifier.height(14.dp))
+                    Text("Tap an orbiting world to navigate", color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+            Text("SAVED LOCALLY  ·  HIGH-DENSITY KMP PHYSICS", color = MutedSpaceText, style = MaterialTheme.typography.labelSmall, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        }
+    }
+}
+
+@Composable
+private fun PhysicsCoreButton(onStart: () -> Unit) {
+    Surface(
+        modifier = Modifier.size(164.dp).semantics { contentDescription = "Open Physics Core" }.clickable(onClick = onStart),
+        shape = CircleShape,
+        color = Color.Transparent,
+        shadowElevation = 14.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val center = Offset(size.width / 2f, size.height / 2f)
+                drawCircle(Brush.radialGradient(listOf(Color(0xFFB9A4FF), OrbitViolet, Color(0xFF3B1D9B)), center, size.minDimension * .54f), radius = size.minDimension * .5f, center = center)
+                drawCircle(Color.White.copy(alpha = .68f), radius = size.minDimension * .43f, center = center, style = Stroke(2.4f))
+                drawCircle(Color(0x228B5CF6), radius = size.minDimension * .64f, center = center)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("PHYSICS", color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text("CORE", color = Color.White.copy(alpha = .8f), style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.height(8.dp))
+                Text("TAP TO LAUNCH", color = Color.White, style = MaterialTheme.typography.labelSmall)
             }
         }
-        Text("SAVED LOCALLY  ·  HIGH-DENSITY KMP PHYSICS", color = MutedSpaceText, style = MaterialTheme.typography.labelSmall, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
     }
 }
 
@@ -308,6 +356,11 @@ private fun OrbitalNode(label: String, caption: String, tint: Color, modifier: M
     ) {
         Surface(modifier = Modifier.size(72.dp).border(1.dp, tint.copy(alpha = .8f), CircleShape), shape = CircleShape, color = tint.copy(alpha = .17f)) {
             Box(contentAlignment = Alignment.Center) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    drawCircle(Brush.radialGradient(listOf(tint.copy(alpha = .42f), Color.Transparent), center, size.minDimension * .52f), radius = size.minDimension * .52f, center = center)
+                    drawCircle(tint.copy(alpha = .56f), radius = size.minDimension * .38f, center = center, style = Stroke(1.2f))
+                }
                 Text(label.take(2), color = tint, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
@@ -322,14 +375,16 @@ private fun OrbitalBackdrop(modifier: Modifier) {
     Canvas(modifier = modifier) {
         drawRect(SpaceNavy)
         val center = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(Color(0xFF101D48), radius = size.minDimension * .58f, center = center)
-        listOf(.23f, .37f, .49f).forEach { ratio ->
-            drawCircle(Color(0x334D5C91), radius = size.minDimension * ratio, center = center, style = Stroke(1.4f))
+        drawCircle(Brush.radialGradient(listOf(Color(0xFF2A176A), Color(0xFF101D48), SpaceNavy), center, size.minDimension * .66f), radius = size.minDimension * .66f, center = center)
+        drawCircle(Brush.radialGradient(listOf(OrbitRose.copy(alpha = .19f), Color.Transparent), Offset(size.width * .1f, size.height * .18f), size.minDimension * .46f), radius = size.minDimension * .46f, center = Offset(size.width * .1f, size.height * .18f))
+        drawCircle(Brush.radialGradient(listOf(OrbitBlue.copy(alpha = .16f), Color.Transparent), Offset(size.width * .92f, size.height * .76f), size.minDimension * .42f), radius = size.minDimension * .42f, center = Offset(size.width * .92f, size.height * .76f))
+        listOf(.23f, .37f, .49f, .61f).forEachIndexed { index, ratio ->
+            drawCircle(if (index % 2 == 0) Color(0x3D8B5CF6) else Color(0x2E60A5FA), radius = size.minDimension * ratio, center = center, style = Stroke(if (index == 3) 1f else 1.4f))
         }
-        repeat(84) { index ->
+        repeat(108) { index ->
             val x = ((index * 97 + 31) % 1000) / 1000f * size.width
             val y = ((index * 173 + 47) % 1000) / 1000f * size.height
-            drawCircle(Color.White.copy(alpha = if (index % 9 == 0) .6f else .28f), radius = if (index % 9 == 0) 1.6f else .8f, center = Offset(x, y))
+            drawCircle(Color.White.copy(alpha = if (index % 11 == 0) .72f else .27f), radius = if (index % 11 == 0) 1.8f else .8f, center = Offset(x, y))
         }
     }
 }
@@ -341,17 +396,26 @@ private fun ExperimentsPage(onBack: () -> Unit, onStart: (ExperimentSpec) -> Uni
             Surface(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).semantics { contentDescription = "Launch ${experiment.title}" }.clickable { onStart(experiment) },
                 shape = RoundedCornerShape(24.dp),
-                color = experiment.tint.copy(alpha = .13f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, experiment.tint.copy(alpha = .7f)),
+                color = experiment.tint.copy(alpha = .18f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, experiment.tint.copy(alpha = .76f)),
+                shadowElevation = 4.dp,
             ) {
                 Row(modifier = Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Surface(modifier = Modifier.size(52.dp), shape = CircleShape, color = experiment.tint.copy(alpha = .26f)) {
-                        Box(contentAlignment = Alignment.Center) { Text(experiment.bodyCount.toString(), color = experiment.tint, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold) }
+                    Surface(modifier = Modifier.size(56.dp), shape = CircleShape, color = experiment.tint.copy(alpha = .26f), border = androidx.compose.foundation.BorderStroke(1.dp, experiment.tint.copy(alpha = .6f))) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val center = Offset(size.width / 2f, size.height / 2f)
+                                drawCircle(Brush.radialGradient(listOf(experiment.tint.copy(alpha = .46f), Color.Transparent), center, size.minDimension * .5f), radius = size.minDimension * .5f, center = center)
+                            }
+                            Text(experiment.bodyCount.toString(), color = experiment.tint, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                        }
                     }
                     Spacer(Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(experiment.title, color = Color.White, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text(experiment.subtitle, color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
+                        Spacer(Modifier.height(3.dp))
+                        Text("INTERACTIVE FIELD PRESET", color = experiment.tint.copy(alpha = .86f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
                     Text("LAUNCH", color = experiment.tint, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 }
@@ -471,16 +535,21 @@ private fun SettingsToggle(title: String, caption: String, checked: Boolean, onC
 
 @Composable
 private fun NativePageScaffold(title: String, subtitle: String, onBack: () -> Unit, content: @Composable () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize().background(SpaceNavy).padding(20.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("ORBIT", color = OrbitViolet) }
-            Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
-                Text(title, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(subtitle, color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
+    Box(modifier = Modifier.fillMaxSize()) {
+        OrbitalBackdrop(Modifier.fillMaxSize())
+        Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Surface(shape = RoundedCornerShape(50), color = OrbitViolet.copy(alpha = .13f), border = androidx.compose.foundation.BorderStroke(1.dp, OrbitViolet.copy(alpha = .48f))) {
+                    TextButton(onClick = onBack) { Text("ORBIT", color = Color.White, fontWeight = FontWeight.Bold) }
+                }
+                Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    Text(title, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text(subtitle, color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
+                }
             }
+            Spacer(Modifier.height(12.dp))
+            Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) { content() }
         }
-        Spacer(Modifier.height(10.dp))
-        Column(modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) { content() }
     }
 }
 
