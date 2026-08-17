@@ -1,9 +1,14 @@
 package com.learncraft.spacephysics
 
 import android.content.Context
+import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.util.UUID
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 
 data class SimulationBodySnapshot(
     val id: Int,
@@ -87,6 +92,29 @@ class NativeSimulationStore(context: Context) {
         loadSimulations().filterNot { it.id == id }.forEach { array.put(encodeSimulation(it)) }
         preferences.edit().putString(KEY_SIMULATIONS, array.toString()).apply()
     }
+
+    /** A compressed, versioned code that can be sent through any text-sharing channel. */
+    fun exportShareCode(snapshot: SavedSimulation): String {
+        val payload = encodeSimulation(snapshot).toString().toByteArray(Charsets.UTF_8)
+        val compressed = ByteArrayOutputStream().use { output ->
+            GZIPOutputStream(output).use { it.write(payload) }
+            output.toByteArray()
+        }
+        return SHARE_PREFIX + Base64.encodeToString(compressed, Base64.URL_SAFE or Base64.NO_WRAP)
+    }
+
+    /** Restores a code as a new local snapshot without overwriting the sender's identifiers. */
+    fun importShareCode(code: String): SavedSimulation? = runCatching {
+        require(code.startsWith(SHARE_PREFIX)) { "Unsupported simulation code" }
+        val packed = Base64.decode(code.removePrefix(SHARE_PREFIX).trim(), Base64.URL_SAFE or Base64.NO_WRAP)
+        val json = GZIPInputStream(ByteArrayInputStream(packed)).bufferedReader(Charsets.UTF_8).use { it.readText() }
+        val imported = decodeSimulation(JSONObject(json))
+        imported.copy(
+            id = UUID.randomUUID().toString(),
+            title = "Shared ${imported.title}",
+            savedAtMillis = System.currentTimeMillis(),
+        )
+    }.getOrNull()
 
     private fun encodeSimulation(value: SavedSimulation): JSONObject = JSONObject().apply {
         put("id", value.id)
@@ -176,5 +204,6 @@ class NativeSimulationStore(context: Context) {
         const val KEY_PAIRWISE = "default_pairwise"
         const val KEY_MAX_VELOCITY = "default_max_velocity"
         const val MAX_SAVED_SIMULATIONS = 12
+        const val SHARE_PREFIX = "LCSP1:"
     }
 }

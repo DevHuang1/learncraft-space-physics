@@ -1,9 +1,16 @@
 package com.learncraft.spacephysics
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,7 +36,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -43,6 +52,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -65,6 +75,8 @@ import com.learncraft.spacephysics.shared.GravityWell
 import com.learncraft.spacephysics.shared.PhysicsEngine
 import com.learncraft.spacephysics.shared.PhysicsSettings
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
@@ -98,6 +110,7 @@ private val experimentCatalog = listOf(
     ExperimentSpec("free-orbit", "FREE ORBIT", "220 bodies · balanced field", 220, 0, .08f, OrbitViolet),
     ExperimentSpec("collision-lab", "COLLISION LAB", "120 bodies · elastic focus", 120, 0, .02f, OrbitMint),
     ExperimentSpec("gravity-garden", "GRAVITY GARDEN", "320 bodies · seeded wells", 320, 3, .10f, OrbitGold),
+    ExperimentSpec("binary-star", "BINARY STAR", "160 bodies · twin stellar wells", 160, 2, .06f, Color(0xFFF97316)),
     ExperimentSpec("dense-field", "DENSE FIELD", "500 bodies · adaptive detail", 500, 1, .05f, OrbitBlue),
 )
 
@@ -123,6 +136,19 @@ private fun SpacePhysicsApp(simulationEnabled: Boolean) {
     var launch by remember {
         mutableStateOf(SimulationLaunch(experimentCatalog.first()))
     }
+    var loadingDestination by remember { mutableStateOf<NativePage?>(null) }
+    val navigationScope = rememberCoroutineScope()
+
+    fun navigateTo(destination: NativePage) {
+        if (destination == page || loadingDestination != null) return
+        loadingDestination = destination
+        navigationScope.launch {
+            delay(160)
+            page = destination
+            delay(180)
+            loadingDestination = null
+        }
+    }
 
     fun updatePreferences(next: NativeAppSettings) {
         preferences = next
@@ -131,56 +157,83 @@ private fun SpacePhysicsApp(simulationEnabled: Boolean) {
 
     fun startExperiment(experiment: ExperimentSpec) {
         launch = SimulationLaunch(experiment)
-        page = NativePage.SIMULATOR
+        navigateTo(NativePage.SIMULATOR)
     }
 
     fun startSavedSimulation(snapshot: SavedSimulation) {
         val fallback = experimentCatalog.firstOrNull { it.id == snapshot.experimentLabel } ?: experimentCatalog.first()
         launch = SimulationLaunch(fallback, snapshot)
-        page = NativePage.SIMULATOR
+        navigateTo(NativePage.SIMULATOR)
     }
 
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = SpaceNavy) {
-            Crossfade(targetState = page, label = "native-orbital-page") { destination ->
-                when (destination) {
-                    NativePage.HOME -> OrbitalHomePage(
-                        onNavigate = { target -> page = target },
-                        onStart = { startExperiment(experimentCatalog.first()) },
-                        savedCount = savedSimulations.size,
-                    )
-                    NativePage.EXPERIMENTS -> ExperimentsPage(
-                        onBack = { page = NativePage.HOME },
-                        onStart = ::startExperiment,
-                    )
-                    NativePage.SAVED -> SavedSimulationsPage(
-                        snapshots = savedSimulations,
-                        onBack = { page = NativePage.HOME },
-                        onLoad = ::startSavedSimulation,
-                        onDelete = { id ->
-                            store.deleteSimulation(id)
-                            savedSimulations = store.loadSimulations()
-                        },
-                    )
-                    NativePage.SETTINGS -> SettingsPage(
-                        settings = preferences,
-                        onBack = { page = NativePage.HOME },
-                        onChange = ::updatePreferences,
-                    )
-                    NativePage.SIMULATOR -> key(launch.snapshot?.id ?: launch.experiment.id) {
-                        SimulationPage(
-                            launch = launch,
-                            preferences = preferences,
-                            simulationEnabled = simulationEnabled,
-                            onBack = { page = NativePage.HOME },
-                            onSave = { snapshot ->
-                                store.saveSimulation(snapshot)
+            Box(modifier = Modifier.fillMaxSize()) {
+                AnimatedContent(
+                    targetState = page,
+                    transitionSpec = {
+                        (fadeIn(animationSpec = tween(220)) + slideInVertically(animationSpec = tween(220)) { it / 12 }) togetherWith
+                            (fadeOut(animationSpec = tween(140)) + slideOutVertically(animationSpec = tween(140)) { -it / 18 })
+                    },
+                    label = "native-orbital-page",
+                ) { destination ->
+                    when (destination) {
+                        NativePage.HOME -> OrbitalHomePage(
+                            onNavigate = ::navigateTo,
+                            onStart = { startExperiment(experimentCatalog.first()) },
+                            savedCount = savedSimulations.size,
+                        )
+                        NativePage.EXPERIMENTS -> ExperimentsPage(
+                            onBack = { navigateTo(NativePage.HOME) },
+                            onStart = ::startExperiment,
+                        )
+                        NativePage.SAVED -> SavedSimulationsPage(
+                            store = store,
+                            snapshots = savedSimulations,
+                            onBack = { navigateTo(NativePage.HOME) },
+                            onLoad = ::startSavedSimulation,
+                            onImport = { savedSimulations = store.loadSimulations() },
+                            onDelete = { id ->
+                                store.deleteSimulation(id)
                                 savedSimulations = store.loadSimulations()
                             },
                         )
+                        NativePage.SETTINGS -> SettingsPage(
+                            settings = preferences,
+                            onBack = { navigateTo(NativePage.HOME) },
+                            onChange = ::updatePreferences,
+                        )
+                        NativePage.SIMULATOR -> key(launch.snapshot?.id ?: launch.experiment.id) {
+                            SimulationPage(
+                                launch = launch,
+                                preferences = preferences,
+                                simulationEnabled = simulationEnabled,
+                                onBack = { navigateTo(NativePage.HOME) },
+                                onSave = { snapshot ->
+                                    store.saveSimulation(snapshot)
+                                    savedSimulations = store.loadSimulations()
+                                },
+                            )
+                        }
                     }
                 }
+                loadingDestination?.let { destination -> OrbitalNavigationLoader(destination) }
             }
+        }
+    }
+}
+
+@Composable
+private fun OrbitalNavigationLoader(destination: NativePage) {
+    Surface(
+        modifier = Modifier.fillMaxSize().semantics { contentDescription = "Loading ${destination.name.lowercase()} page" },
+        color = SpaceNavy.copy(alpha = .82f),
+    ) {
+        Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(color = OrbitViolet, strokeWidth = 3.dp)
+            Spacer(Modifier.height(14.dp))
+            Text("ALIGNING ORBIT…", color = Color.White, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+            Text(destination.name.lowercase().replaceFirstChar { it.uppercase() }, color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -308,12 +361,44 @@ private fun ExperimentsPage(onBack: () -> Unit, onStart: (ExperimentSpec) -> Uni
 
 @Composable
 private fun SavedSimulationsPage(
+    store: NativeSimulationStore,
     snapshots: List<SavedSimulation>,
     onBack: () -> Unit,
     onLoad: (SavedSimulation) -> Unit,
+    onImport: () -> Unit,
     onDelete: (String) -> Unit,
 ) {
+    val context = LocalContext.current
+    var generatedCode by remember { mutableStateOf<String?>(null) }
+    var importCode by remember { mutableStateOf("") }
+    var importMessage by remember { mutableStateOf<String?>(null) }
     NativePageScaffold(title = "SAVED SIGNALS", subtitle = "Local simulation snapshots", onBack = onBack) {
+        Surface(modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp), shape = RoundedCornerShape(20.dp), color = OrbitViolet.copy(alpha = .11f), border = androidx.compose.foundation.BorderStroke(1.dp, OrbitViolet.copy(alpha = .45f))) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text("IMPORT A SHARED CODE", color = Color.White, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Text("Paste an LCSP1 code from another user to add their simulation locally.", color = MutedSpaceText, style = MaterialTheme.typography.bodySmall)
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(value = importCode, onValueChange = { importCode = it; importMessage = null }, modifier = Modifier.fillMaxWidth(), label = { Text("LCSP1 share code") }, minLines = 2)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                    importMessage?.let { Text(it, color = if (it.startsWith("Imported")) OrbitMint else Color(0xFFFCA5A5), style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f)) }
+                    Button(
+                        onClick = {
+                            val imported = store.importShareCode(importCode)
+                            if (imported == null) {
+                                importMessage = "This code could not be read."
+                            } else {
+                                store.saveSimulation(imported)
+                                importCode = ""
+                                importMessage = "Imported ${imported.title}"
+                                onImport()
+                            }
+                        },
+                        enabled = importCode.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = OrbitViolet),
+                    ) { Text("IMPORT") }
+                }
+            }
+        }
         if (snapshots.isEmpty()) {
             Surface(modifier = Modifier.fillMaxWidth().padding(top = 48.dp), shape = RoundedCornerShape(24.dp), color = OrbitBlue.copy(alpha = .12f)) {
                 Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -330,7 +415,28 @@ private fun SavedSimulationsPage(
                             Text(snapshot.title, color = Color.White, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                             Text("${snapshot.bodies.size} elements · ${snapshot.wells.size} wells · ${snapshot.experimentLabel}", color = MutedSpaceText, style = MaterialTheme.typography.labelSmall)
                         }
+                        TextButton(onClick = { generatedCode = store.exportShareCode(snapshot) }) { Text("SHARE", color = OrbitMint) }
                         TextButton(onClick = { onDelete(snapshot.id) }) { Text("DELETE", color = Color(0xFFFCA5A5)) }
+                    }
+                }
+            }
+        }
+        generatedCode?.let { code ->
+            Surface(modifier = Modifier.fillMaxWidth().padding(top = 12.dp), shape = RoundedCornerShape(20.dp), color = OrbitMint.copy(alpha = .12f), border = androidx.compose.foundation.BorderStroke(1.dp, OrbitMint.copy(alpha = .48f))) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text("SHARE CODE READY", color = OrbitMint, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                    Text("Send this code through any messaging app. The recipient can paste it above to restore the simulation.", color = MutedSpaceText, style = MaterialTheme.typography.bodySmall)
+                    Spacer(Modifier.height(8.dp))
+                    Text(code, color = Color.White, style = MaterialTheme.typography.labelSmall)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { generatedCode = null }) { Text("CLOSE", color = MutedSpaceText) }
+                        Button(onClick = {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "LearnCraft Space Physics simulation code:\n$code")
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share simulation"))
+                        }, colors = ButtonDefaults.buttonColors(containerColor = OrbitMint)) { Text("SHARE") }
                     }
                 }
             }
@@ -400,9 +506,13 @@ private fun SimulationPage(
     LaunchedEffect(launch) {
         engine.reset()
         if (launch.snapshot == null) {
-            seedBodies(engine, launch.experiment.bodyCount)
-            repeat(launch.experiment.initialWells) { index ->
-                engine.wells += GravityWell(240f + index * 190f, 240f + (index % 2) * 220f, mass = .78f, radius = 190f)
+            if (launch.experiment.id == "binary-star") {
+                seedBinaryStarSystem(engine)
+            } else {
+                seedBodies(engine, launch.experiment.bodyCount)
+                repeat(launch.experiment.initialWells) { index ->
+                    engine.wells += GravityWell(240f + index * 190f, 240f + (index % 2) * 220f, mass = .78f, radius = 190f)
+                }
             }
             settings.pairwiseAttraction = launch.experiment.pairwiseAttraction
         } else {
@@ -521,6 +631,28 @@ private fun seedBodies(engine: PhysicsEngine, count: Int) {
             radius = 2f + (index % 4),
             elasticity = .82f,
             color = colors[index % colors.size],
+        )
+    }
+}
+
+private fun seedBinaryStarSystem(engine: PhysicsEngine) {
+    val companionColors = listOf(0xFFA78BFA, 0xFF60A5FA, 0xFF34D399, 0xFFFBBF24)
+    engine.wells += GravityWell(420f, 460f, mass = 1.18f, radius = 275f)
+    engine.wells += GravityWell(860f, 460f, mass = 1.06f, radius = 260f)
+    repeat(160) { index ->
+        val angle = (index * 0.739f) % 6.28f
+        val radius = 80f + (index % 20) * 18f
+        val focusX = if (index % 2 == 0) 420f else 860f
+        engine.bodies += Body(
+            id = index,
+            x = focusX + cos(angle) * radius,
+            y = 460f + sin(angle) * radius,
+            vx = -sin(angle) * .82f,
+            vy = cos(angle) * .82f,
+            mass = .6f + (index % 5) * .12f,
+            radius = 2f + (index % 4),
+            elasticity = .88f,
+            color = companionColors[index % companionColors.size],
         )
     }
 }

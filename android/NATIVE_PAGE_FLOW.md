@@ -6,7 +6,7 @@ The Android application is a self-contained, portrait-first **LearnCraft Space P
 |---|---|---|
 | Home | Central physics core and four orbiting destinations | Open a laboratory, saved snapshot, or preferences |
 | Experiments | Four named physics scenarios with clear body-count labels | Launch a real shared-engine simulation |
-| Saved Simulations | Locally stored full body/well/settings snapshots | Restore or delete a saved state |
+| Saved Simulations | Locally stored full body/well/settings snapshots and an LCSP1 share-code field | Restore, delete, import, or share a saved state |
 | Settings | Sound, reduced-motion, attraction, and velocity controls | Persist device-local preferences |
 | Simulator | High-density Compose canvas, gravity wells, drag controls, and object overrides | Save a full local snapshot or return to orbit |
 
@@ -17,3 +17,4 @@ The visual system uses deep-space navy (`#050814`), violet for the learning core
 1. **Home → Experiments → Simulator:** The user taps the mint experiment world, selects a scenario, and enters the existing high-performance physics canvas.
 2. **Simulator → Save → Saved Simulations → Restore:** The user saves the current bodies, wells, and physics settings locally, then restores that exact snapshot later from the blue saved-signal page.
 3. **Home → Settings → Home:** The user adjusts sound, motion, attraction, or velocity settings. Values persist locally and are applied to future simulation launches.
+4. **Saved → Share / Import:** A save is compressed into an `LCSP1:` code and opened in the Android share sheet. Another user can paste the code into Saved Simulations to store an independent local copy.

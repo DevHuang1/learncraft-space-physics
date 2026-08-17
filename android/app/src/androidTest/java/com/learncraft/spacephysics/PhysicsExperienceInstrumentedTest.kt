@@ -16,6 +16,8 @@ import com.learncraft.spacephysics.shared.GravityWell
 import com.learncraft.spacephysics.shared.PhysicsEngine
 import com.learncraft.spacephysics.shared.PhysicsEvent
 import com.learncraft.spacephysics.shared.PhysicsSettings
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.After
 import org.junit.Before
@@ -89,8 +91,34 @@ class PhysicsExperienceInstrumentedTest {
 
         composeRule.onNodeWithContentDescription("Open Experiments").performClick()
         composeRule.onNodeWithText("EXPERIMENT LAB").assertIsDisplayed()
+        composeRule.onNodeWithText("BINARY STAR").assertIsDisplayed()
         composeRule.onNodeWithText("ORBIT").performClick()
         composeRule.onNodeWithContentDescription("Open Settings").performClick()
         composeRule.onNodeWithText("COMMAND SETTINGS").assertIsDisplayed()
+    }
+
+    @Test
+    fun versionedShareCodeRoundTripsSimulationState() {
+        val store = NativeSimulationStore(ApplicationProvider.getApplicationContext())
+        val original = SavedSimulation(
+            title = "Twin-star test",
+            experimentLabel = "binary-star",
+            selectedMass = 1.2f,
+            selectedRadius = 4f,
+            selectedElasticity = .9f,
+            pairwiseAttraction = .06f,
+            maxVelocity = 7f,
+            bodies = listOf(SimulationBodySnapshot(7, 20f, 30f, 1f, -1f, 1.2f, 4f, .9f, 0xFFFBBF24)),
+            wells = listOf(SimulationWellSnapshot(90f, 120f, 1.1f, 220f)),
+        )
+
+        val code = store.exportShareCode(original)
+        val restored = store.importShareCode(code)
+
+        assertTrue("Share code should carry the versioned prefix", code.startsWith("LCSP1:"))
+        assertNotNull("Valid codes should import", restored)
+        assertEquals("Imported snapshot should preserve body count", 1, restored!!.bodies.size)
+        assertEquals("Imported snapshot should preserve the experiment", "binary-star", restored.experimentLabel)
+        assertTrue("Imported snapshot receives a new local identifier", restored.id != original.id)
     }
 }
