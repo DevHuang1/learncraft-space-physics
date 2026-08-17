@@ -90,11 +90,24 @@ class PhysicsExperienceInstrumentedTest {
         scenario = ActivityScenario.launch(Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java))
 
         composeRule.onNodeWithContentDescription("Open Experiments").performClick()
-        composeRule.onNodeWithText("EXPERIMENT LAB").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 3_000) {
+            runCatching {
+                composeRule.onNodeWithText("EXPERIMENT LAB").assertIsDisplayed()
+            }.isSuccess
+        }
         composeRule.onNodeWithText("BINARY STAR").assertIsDisplayed()
         composeRule.onNodeWithText("ORBIT").performClick()
+        composeRule.waitUntil(timeoutMillis = 3_000) {
+            runCatching {
+                composeRule.onNodeWithContentDescription("Open Settings").assertIsDisplayed()
+            }.isSuccess
+        }
         composeRule.onNodeWithContentDescription("Open Settings").performClick()
-        composeRule.onNodeWithText("COMMAND SETTINGS").assertIsDisplayed()
+        composeRule.waitUntil(timeoutMillis = 3_000) {
+            runCatching {
+                composeRule.onNodeWithText("COMMAND SETTINGS").assertIsDisplayed()
+            }.isSuccess
+        }
     }
 
     @Test
