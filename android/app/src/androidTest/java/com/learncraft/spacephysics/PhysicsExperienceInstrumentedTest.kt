@@ -7,6 +7,7 @@ import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -79,5 +80,17 @@ class PhysicsExperienceInstrumentedTest {
         val collisionEvents = collisionEngine.step(1f / 60f, 400f, 400f, settings)
         assertTrue("Overlapping approaching bodies should collide", collisionEngine.collisionCount > 0)
         assertTrue("Audible collision events should be emitted", collisionEvents.any { it is PhysicsEvent.Collision })
+    }
+
+    @Test
+    fun orbitalHomeOpensTheNativeExperimentAndSettingsPages() {
+        scenario.close()
+        scenario = ActivityScenario.launch(Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java))
+
+        composeRule.onNodeWithContentDescription("Open Experiments").performClick()
+        composeRule.onNodeWithText("EXPERIMENT LAB").assertIsDisplayed()
+        composeRule.onNodeWithText("ORBIT").performClick()
+        composeRule.onNodeWithContentDescription("Open Settings").performClick()
+        composeRule.onNodeWithText("COMMAND SETTINGS").assertIsDisplayed()
     }
 }

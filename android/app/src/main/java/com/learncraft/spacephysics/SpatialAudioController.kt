@@ -29,6 +29,7 @@ class SpatialAudioController(
     private var collisionSoundId: Int? = null
     private var wellSoundId: Int? = null
     private var volume = 0.07f
+    private var enabled = true
     private var collisionGapNanos = 90_000_000L
     private var lastCollisionNanos = 0L
 
@@ -39,6 +40,7 @@ class SpatialAudioController(
     }
 
     fun setVolume(value: Float) { volume = value.coerceIn(0f, 0.18f) }
+    fun setEnabled(value: Boolean) { enabled = value }
     fun setCollisionGapMillis(value: Long) { collisionGapNanos = value.coerceIn(30L, 500L) * 1_000_000L }
 
     fun consume(events: List<PhysicsEvent>, viewportWidth: Float) {
@@ -56,6 +58,7 @@ class SpatialAudioController(
     }
 
     private fun play(soundId: Int?, x: Float, intensity: Float, viewportWidth: Float) {
+        if (!enabled) return
         val id = soundId ?: return
         val pan = ((x / max(1f, viewportWidth)) * 2f - 1f).coerceIn(-1f, 1f)
         val gain = min(1f, volume * (0.8f + intensity.coerceIn(0f, 3f) * 0.15f))
