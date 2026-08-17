@@ -41,6 +41,16 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Run Android UI and on-device physics tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          script: cd android && gradle :app:connectedDebugAndroidTest --no-daemon --stacktrace
+
       - name: Decode release keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}

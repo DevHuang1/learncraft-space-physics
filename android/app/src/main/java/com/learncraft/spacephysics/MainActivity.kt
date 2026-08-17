@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.learncraft.spacephysics.shared.Body
@@ -136,7 +138,7 @@ private fun SpacePhysicsApp() {
                 ) {
                     Row(horizontalArrangement = Arrangement.Center) {
                         Text(
-                            text = "${engine.bodies.size} ELEMENTS  ·  ${engine.collisionCount} BOUNCES",
+                            text = "${engine.bodies.size} ELEMENTS  ·  ${engine.collisionCount} BOUNCES  ·  ${engine.wells.size} WELLS",
                             color = Color(0xFFA6AEC8),
                             style = MaterialTheme.typography.labelSmall,
                         )
@@ -165,6 +167,7 @@ private fun SpaceViewport(
         modifier = modifier
             .background(Color(0xFF050814))
             .onSizeChanged(onSize)
+            .semantics { contentDescription = "Physics viewport" }
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = { offset ->
