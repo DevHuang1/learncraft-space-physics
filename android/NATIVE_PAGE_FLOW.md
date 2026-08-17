@@ -18,3 +18,4 @@ The visual system uses deep-space navy (`#050814`), violet for the learning core
 2. **Simulator → Save → Saved Simulations → Restore:** The user saves the current bodies, wells, and physics settings locally, then restores that exact snapshot later from the blue saved-signal page.
 3. **Home → Settings → Home:** The user adjusts sound, motion, attraction, or velocity settings. Values persist locally and are applied to future simulation launches.
 4. **Saved → Share / Import:** A save is compressed into an `LCSP1:` code and opened in the Android share sheet. Another user can paste the code into Saved Simulations to store an independent local copy.
+5. **Experiments → Three-Body:** The user can launch a triangular three-primary system with 177 companion bodies and three overlapping gravity wells. The scene is designed to show the sensitive, evolving relationship among three large masses while preserving usable touch targets.

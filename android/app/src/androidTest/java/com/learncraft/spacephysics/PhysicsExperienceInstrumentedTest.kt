@@ -96,6 +96,7 @@ class PhysicsExperienceInstrumentedTest {
             }.isSuccess
         }
         composeRule.onNodeWithText("BINARY STAR").assertIsDisplayed()
+        composeRule.onNodeWithText("THREE-BODY").assertIsDisplayed()
         composeRule.onNodeWithText("ORBIT").performClick()
         composeRule.waitUntil(timeoutMillis = 3_000) {
             runCatching {

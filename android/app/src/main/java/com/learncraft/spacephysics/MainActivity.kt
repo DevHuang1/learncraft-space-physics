@@ -111,6 +111,7 @@ private val experimentCatalog = listOf(
     ExperimentSpec("collision-lab", "COLLISION LAB", "120 bodies · elastic focus", 120, 0, .02f, OrbitMint),
     ExperimentSpec("gravity-garden", "GRAVITY GARDEN", "320 bodies · seeded wells", 320, 3, .10f, OrbitGold),
     ExperimentSpec("binary-star", "BINARY STAR", "160 bodies · twin stellar wells", 160, 2, .06f, Color(0xFFF97316)),
+    ExperimentSpec("three-body", "THREE-BODY", "180 bodies · triad gravity dance", 180, 3, .14f, Color(0xFFF43F5E)),
     ExperimentSpec("dense-field", "DENSE FIELD", "500 bodies · adaptive detail", 500, 1, .05f, OrbitBlue),
 )
 
@@ -506,12 +507,14 @@ private fun SimulationPage(
     LaunchedEffect(launch) {
         engine.reset()
         if (launch.snapshot == null) {
-            if (launch.experiment.id == "binary-star") {
-                seedBinaryStarSystem(engine)
-            } else {
-                seedBodies(engine, launch.experiment.bodyCount)
-                repeat(launch.experiment.initialWells) { index ->
-                    engine.wells += GravityWell(240f + index * 190f, 240f + (index % 2) * 220f, mass = .78f, radius = 190f)
+            when (launch.experiment.id) {
+                "binary-star" -> seedBinaryStarSystem(engine)
+                "three-body" -> seedThreeBodySystem(engine)
+                else -> {
+                    seedBodies(engine, launch.experiment.bodyCount)
+                    repeat(launch.experiment.initialWells) { index ->
+                        engine.wells += GravityWell(240f + index * 190f, 240f + (index % 2) * 220f, mass = .78f, radius = 190f)
+                    }
                 }
             }
             settings.pairwiseAttraction = launch.experiment.pairwiseAttraction
@@ -652,6 +655,50 @@ private fun seedBinaryStarSystem(engine: PhysicsEngine) {
             mass = .6f + (index % 5) * .12f,
             radius = 2f + (index % 4),
             elasticity = .88f,
+            color = companionColors[index % companionColors.size],
+        )
+    }
+}
+
+/**
+ * A stable, readable approximation of a three-body gravity problem: three massive primaries
+ * form a moving triangle while local companion objects explore the three overlapping wells.
+ */
+private fun seedThreeBodySystem(engine: PhysicsEngine) {
+    data class Primary(val x: Float, val y: Float, val vx: Float, val vy: Float, val color: Long)
+    val primaries = listOf(
+        Primary(440f, 330f, .82f, .46f, 0xFFF43F5E),
+        Primary(820f, 380f, -.78f, .54f, 0xFFFBBF24),
+        Primary(630f, 700f, -.04f, -.96f, 0xFF60A5FA),
+    )
+    primaries.forEachIndexed { index, primary ->
+        engine.wells += GravityWell(primary.x, primary.y, mass = 1.12f, radius = 255f)
+        engine.bodies += Body(
+            id = index,
+            x = primary.x,
+            y = primary.y,
+            vx = primary.vx,
+            vy = primary.vy,
+            mass = 8.5f,
+            radius = 12f,
+            elasticity = .94f,
+            color = primary.color,
+        )
+    }
+    val companionColors = listOf(0xFFA78BFA, 0xFF34D399, 0xFFF472B6, 0xFFE0F2FE)
+    repeat(177) { index ->
+        val primary = primaries[index % primaries.size]
+        val angle = (index * .667f) % 6.28f
+        val radius = 62f + (index % 19) * 16f
+        engine.bodies += Body(
+            id = index + primaries.size,
+            x = primary.x + cos(angle) * radius,
+            y = primary.y + sin(angle) * radius,
+            vx = primary.vx - sin(angle) * .72f,
+            vy = primary.vy + cos(angle) * .72f,
+            mass = .45f + (index % 5) * .12f,
+            radius = 1.8f + (index % 4),
+            elasticity = .86f,
             color = companionColors[index % companionColors.size],
         )
     }
