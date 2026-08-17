@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    tags:
+      - "v*.*.*"
     paths:
       - "android/**"
       - ".github/workflows/android-apk.yml"
@@ -18,6 +20,11 @@ jobs:
   build-apk:
     name: Build signed Samsung APK
     runs-on: ubuntu-latest
+    outputs:
+      version_name: ${{ steps.version.outputs.version_name }}
+      version_code: ${{ steps.version.outputs.version_code }}
+      release_tag: ${{ steps.version.outputs.release_tag }}
+      artifact_name: ${{ steps.version.outputs.artifact_name }}
     defaults:
       run:
         working-directory: android
@@ -41,6 +48,40 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Derive release version from Git tag
+        id: version
+        shell: bash
+        run: |
+          VERSION="$APP_VERSION"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=Invalid release version::Use a vMAJOR.MINOR.PATCH tag, for example v1.0.2."
+            exit 1
+          fi
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          VERSION_CODE=$((10#$MAJOR * 1000000 + 10#$MINOR * 1000 + 10#$PATCH))
+          if (( VERSION_CODE <= 0 || VERSION_CODE > 2100000000 )); then
+            echo "::error title=Invalid version code::The derived Android version code is outside the supported range."
+            exit 1
+          fi
+
+          RELEASE_TAG="android-v${VERSION}-build-${GITHUB_RUN_NUMBER}"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            RELEASE_TAG="$GITHUB_REF_NAME"
+          fi
+
+          ARTIFACT_NAME="learncraft-space-physics-release-apk-${VERSION}"
+          {
+            echo "version_name=$VERSION"
+            echo "version_code=$VERSION_CODE"
+            echo "release_tag=$RELEASE_TAG"
+            echo "artifact_name=$ARTIFACT_NAME"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Decode release keystore
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -63,37 +104,23 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          RELEASE_VERSION_NAME: ${{ steps.version.outputs.version_name }}
+          RELEASE_VERSION_CODE: ${{ steps.version.outputs.version_code }}
         run: gradle :app:assembleRelease --no-daemon --stacktrace
 
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: learncraft-space-physics-release-apk
+          name: ${{ steps.version.outputs.artifact_name }}
           path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish public signed GitHub release
-        if: github.event_name == 'workflow_dispatch'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: android-v${{ env.APP_VERSION }}-build-${{ github.run_number }}
-          name: LearnCraft Space Physics signed Android build ${{ env.APP_VERSION }}
-          body: |
-            Signed release APK for Samsung and other Android devices.
-
-            Build version: ${{ env.APP_VERSION }}
-            Version code: 2
-          files: android/app/build/outputs/apk/release/app-release.apk
-          generate_release_notes: true
-
       - name: Publish run summary
         run: |
-          APK="app/build/outputs/apk/release/app-release.apk"
           echo "## Signed Samsung APK" >> "$GITHUB_STEP_SUMMARY"
-          echo "Build version: $APP_VERSION (version code 2)" >> "$GITHUB_STEP_SUMMARY"
-          echo "APK artifact: $APK" >> "$GITHUB_STEP_SUMMARY"
-          echo "Download the learncraft-space-physics-release-apk artifact from this workflow run." >> "$GITHUB_STEP_SUMMARY"
+          echo "Build version: ${{ steps.version.outputs.version_name }} (version code ${{ steps.version.outputs.version_code }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: ${{ steps.version.outputs.artifact_name }}" >> "$GITHUB_STEP_SUMMARY"
 
   android-ui-tests:
     name: Run Android UI and physics tests
@@ -121,6 +148,18 @@ jobs:
         with:
           gradle-version: "8.9"
 
+      - name: Derive test build version from Git tag
+        shell: bash
+        run: |
+          VERSION="$APP_VERSION"
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          VERSION_CODE=$((10#$MAJOR * 1000000 + 10#$MINOR * 1000 + 10#$PATCH))
+          echo "RELEASE_VERSION_NAME=$VERSION" >> "$GITHUB_ENV"
+          echo "RELEASE_VERSION_CODE=$VERSION_CODE" >> "$GITHUB_ENV"
+
       - name: Enable KVM for Android emulator
         run: |
           echo 'KERNEL=="kvm", MODE="0666", GROUP="kvm", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -146,3 +185,32 @@ jobs:
           path: android/app/build/reports/androidTests
           if-no-files-found: warn
           retention-days: 14
+
+  publish-release:
+    name: Publish signed APK release
+    runs-on: ubuntu-latest
+    needs: [build-apk, android-ui-tests]
+    if: >-
+      (github.event_name == 'workflow_dispatch' || github.ref_type == 'tag') &&
+      needs.build-apk.result == 'success' &&
+      needs.android-ui-tests.result == 'success'
+    steps:
+      - name: Download signed APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build-apk.outputs.artifact_name }}
+          path: release
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build-apk.outputs.release_tag }}
+          name: LearnCraft Space Physics signed Android build ${{ needs.build-apk.outputs.version_name }}
+          body: |
+            Signed release APK for Samsung and other Android devices.
+
+            Build version: ${{ needs.build-apk.outputs.version_name }}
+            Version code: ${{ needs.build-apk.outputs.version_code }}
+            Source trigger: ${{ github.ref_type == 'tag' && github.ref_name || 'manual workflow dispatch' }}
+          files: release/app-release.apk
+          generate_release_notes: true

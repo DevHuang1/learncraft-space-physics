@@ -113,8 +113,8 @@ See [`BENCHMARKS.md`](BENCHMARKS.md) for measurement guidance and interpretation
 
 This is an active engineering prototype. The browser prototype is directly runnable; Android/KMP source is organized for compilation on a machine with the required Kotlin, Gradle, and Android toolchain. Benchmark numbers should always be collected on the target device or a documented reference machine rather than inferred from source inspection.
 
-## Download for a Samsung phone
+## Automated Android releases and Samsung downloads
 
-The browser prototype opens directly on Samsung Chrome, while the native Android target can be downloaded as a signed APK. Configure the repository secrets documented in [`android/README.md`](android/README.md), then open **Actions → Android APK → Run workflow**. Download `app-release.apk` from the public release asset or the `learncraft-space-physics-release-apk` artifact, extract it if needed, and open it on the phone. Android may ask you to allow installation from the file source. The control panel shows the installed build version and version code.
+The browser prototype opens directly on Samsung Chrome, while the native Android target can be downloaded as a signed APK. Configure the repository secrets documented in [`android/README.md`](android/README.md), then push a version tag such as `v1.0.2` to trigger a signed release automatically. Download `app-release.apk` from the GitHub release, open it on the phone, and allow installation from the file source if Android asks. The control panel shows the installed build version and version code.
 
-The full Android setup, local build commands, and troubleshooting notes are in [`android/README.md`](android/README.md).
+The full Android setup, local build commands, and troubleshooting notes are in [`android/README.md`](android/README.md). See [`docs/RELEASING.md`](docs/RELEASING.md) for the exact tag-publishing routine and version-code policy.

@@ -18,13 +18,13 @@ gradle :app:assembleRelease
 
 The current sandbox does not have the Android SDK or Gradle command installed, so APK compilation must be completed on an Android development machine or after installing those toolchains.
 
-## Download an APK for a Samsung phone
+## Automated APK releases and Samsung downloads
 
-The repository includes a GitHub Actions workflow at `.github/workflows/android-apk.yml`. A manual run from **Actions → Android APK → Run workflow** builds a signed release APK and publishes it as both a workflow artifact and a public GitHub release asset.
+The repository includes a GitHub Actions workflow at `.github/workflows/android-apk.yml`. Android code changes on `main` build and run the UI/physics test suite automatically. Pushing a semantic version tag, such as `v1.0.2`, builds a signed APK, verifies the KVM-backed Android UI tests, and publishes a matching GitHub release automatically.
 
 Before the first manual run, configure these repository secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. The base64 secret must contain the complete release keystore file encoded without line wrapping. Keep the keystore and passwords private; never commit them to the repository.
 
-After the workflow completes, download `app-release.apk` from the release page or the `learncraft-space-physics-release-apk` artifact. Open it with My Files on the Samsung phone and allow installation from that source if Android asks. The installed control panel displays the app version and version code.
+After the workflow completes, download `app-release.apk` from the release page or the versioned workflow artifact. Open it with My Files on the Samsung phone and allow installation from that source if Android asks. The installed control panel displays the app version and version code.
 
 | Goal | Command or action |
 |---|---|
@@ -32,6 +32,7 @@ After the workflow completes, download `app-release.apk` from the release page o
 | APK output | `android/app/build/outputs/apk/release/app-release.apk` |
 | Run shared tests | `gradle :shared:test` |
 | Run the benchmark | `gradle :benchmark:run` |
-| Build from GitHub | Actions → Android APK → Run workflow |
+| Publish a versioned release | Push a tag such as `v1.0.2` |
+| Build from GitHub without releasing | Actions → Android APK → Run workflow |
 
-For a local signed build, export `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` before running `gradle :app:assembleRelease`. The sandbox used to edit this repository does not contain the Android SDK or Gradle executable, so the GitHub Actions workflow is the supported no-local-toolchain route for obtaining the signed APK.
+For a local signed build, export `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD` before running `gradle :app:assembleRelease`. The sandbox used to edit this repository does not contain the Android SDK or Gradle executable, so the GitHub Actions workflow is the supported no-local-toolchain route for obtaining the signed APK. See [`../docs/RELEASING.md`](../docs/RELEASING.md) for the tag format and the two-remote publishing commands.

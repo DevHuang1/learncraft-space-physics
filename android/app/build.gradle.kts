@@ -8,12 +8,20 @@ android {
     namespace = "com.learncraft.spacephysics"
     compileSdk = 35
 
+    // CI supplies these values for a vMAJOR.MINOR.PATCH release tag. Local builds retain
+    // the checked-in fallback version for a predictable development experience.
+    val releaseVersionName = providers.environmentVariable("RELEASE_VERSION_NAME").orNull
+        ?.takeIf { it.isNotBlank() }
+    val releaseVersionCode = providers.environmentVariable("RELEASE_VERSION_CODE").orNull
+        ?.toIntOrNull()
+        ?.takeIf { it > 0 }
+
     defaultConfig {
         applicationId = "com.learncraft.spacephysics"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = releaseVersionCode ?: 2
+        versionName = releaseVersionName ?: "1.0.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
