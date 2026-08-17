@@ -2,8 +2,8 @@ package com.learncraft.spacephysics
 
 import android.content.Intent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -56,7 +56,7 @@ class PhysicsExperienceInstrumentedTest {
 
         composeRule.waitUntil(timeoutMillis = 3_000) {
             runCatching {
-                composeRule.onNodeWithText("1 WELLS", substring = true).assertExists()
+                composeRule.onNodeWithText("1 WELLS", substring = true).assertIsDisplayed()
             }.isSuccess
         }
     }
