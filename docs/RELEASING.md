@@ -1,6 +1,6 @@
 # Automated Android Releases
 
-The Android workflow builds a signed APK and runs the on-device Android UI and physics tests whenever Android source or workflow files change on `main`. A GitHub release is then published automatically only when a semantic-version Git tag is pushed or when the workflow is started manually.
+The Android workflow builds a signed APK and runs the on-device Android UI and physics tests whenever Android source or workflow files change on `main`. A GitHub release is then published automatically only when a semantic-version Git tag is pushed. A manual workflow run is test-only by default; publishing from that screen requires selecting the explicit **Publish a GitHub release** option.
 
 ## Prerequisites
 
@@ -23,3 +23,7 @@ The tag must follow `vMAJOR.MINOR.PATCH`, for example `v2.3.4`. The workflow der
 ## If a release fails
 
 Do not reuse a modified tag. Correct the problem, create the next version tag, and push it. For transient infrastructure problems, use **Re-run all jobs** from the failed Actions run. The generated test-report artifact is available for Android instrumentation-test diagnostics.
+
+## Manual verification without a release
+
+Open **Actions → Android APK → Run workflow** and leave **Publish a GitHub release** unchecked. This builds the signed APK and runs the Android UI/physics tests without creating another public or private GitHub release. Select that checkbox only when a manually published release is intentional; version tags remain the preferred release route.

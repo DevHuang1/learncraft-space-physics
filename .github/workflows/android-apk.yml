@@ -2,6 +2,12 @@ name: Android APK
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish a GitHub release after build and Android UI tests pass"
+        required: true
+        type: boolean
+        default: false
   push:
     branches: [main]
     tags:
@@ -191,7 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-apk, android-ui-tests]
     if: >-
-      (github.event_name == 'workflow_dispatch' || github.ref_type == 'tag') &&
+      (github.ref_type == 'tag' || inputs.publish_release == true) &&
       needs.build-apk.result == 'success' &&
       needs.android-ui-tests.result == 'success'
     steps:
