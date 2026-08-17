@@ -44,12 +44,22 @@ jobs:
       - name: Run Android UI and on-device physics tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
+          api-level: 29
           target: default
-          arch: x86_64
-          profile: pixel_2
+          arch: x86
+          profile: Nexus 6
           disable-animations: true
+          emulator-options: -no-snapshot -no-window -noaudio -no-boot-anim -gpu swiftshader_indirect
           script: cd android && gradle :app:connectedDebugAndroidTest --no-daemon --stacktrace
+
+      - name: Upload Android test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: learncraft-space-physics-android-test-reports
+          path: android/app/build/reports/androidTests
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Decode release keystore
         env:
