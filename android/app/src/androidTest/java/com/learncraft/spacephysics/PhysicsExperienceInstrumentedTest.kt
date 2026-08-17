@@ -1,24 +1,43 @@
 package com.learncraft.spacephysics
 
+import android.content.Intent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTouchInput
+import androidx.test.core.app.ActivityScenario
+import androidx.test.core.app.ApplicationProvider
 import com.learncraft.spacephysics.shared.Body
 import com.learncraft.spacephysics.shared.GravityWell
 import com.learncraft.spacephysics.shared.PhysicsEngine
 import com.learncraft.spacephysics.shared.PhysicsEvent
 import com.learncraft.spacephysics.shared.PhysicsSettings
 import org.junit.Assert.assertTrue
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
 class PhysicsExperienceInstrumentedTest {
     @get:Rule
-    val composeRule = createAndroidComposeRule<MainActivity>()
+    val composeRule = createEmptyComposeRule()
+
+    private lateinit var scenario: ActivityScenario<MainActivity>
+
+    @Before
+    fun launchStaticExperience() {
+        val intent = Intent(ApplicationProvider.getApplicationContext(), MainActivity::class.java)
+            .putExtra(MainActivity.EXTRA_SIMULATION_ENABLED, false)
+        scenario = ActivityScenario.launch(intent)
+    }
+
+    @After
+    fun closeExperience() {
+        scenario.close()
+    }
 
     @Test
     fun controlPanelShowsInstalledBuildAndObjectPhysicsControls() {

@@ -54,12 +54,17 @@ import kotlin.math.sin
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { SpacePhysicsApp() }
+        val simulationEnabled = intent?.getBooleanExtra(EXTRA_SIMULATION_ENABLED, true) ?: true
+        setContent { SpacePhysicsApp(simulationEnabled) }
+    }
+
+    companion object {
+        const val EXTRA_SIMULATION_ENABLED = "com.learncraft.spacephysics.SIMULATION_ENABLED"
     }
 }
 
 @Composable
-private fun SpacePhysicsApp() {
+private fun SpacePhysicsApp(simulationEnabled: Boolean) {
     val context = LocalContext.current
     val engine = remember { PhysicsEngine() }
     val audio = remember { SpatialAudioController(context) }
@@ -73,7 +78,7 @@ private fun SpacePhysicsApp() {
 
     DisposableEffect(audio) { onDispose { audio.close() } }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(simulationEnabled) {
         audio.loadSounds(R.raw.collision, R.raw.gravity_well)
         repeat(220) { i ->
             val angle = (i * 0.618f) % 6.28f
@@ -90,6 +95,8 @@ private fun SpacePhysicsApp() {
                 color = colors[i % colors.size],
             )
         }
+        if (!simulationEnabled) return@LaunchedEffect
+
         val runner = FixedStepRunner()
         var previous = 0L
         while (isActive) {
@@ -131,6 +138,7 @@ private fun SpacePhysicsApp() {
                         }
                     },
                     onDragEnd = { draggingId = null },
+                    onGravityWellAdded = { frameTick++ },
                 )
                 Column(
                     modifier = Modifier.fillMaxWidth().align(Alignment.BottomCenter).padding(16.dp),
@@ -162,6 +170,7 @@ private fun SpaceViewport(
     onDragStart: (Int) -> Unit,
     onDrag: (Float, Float) -> Unit,
     onDragEnd: () -> Unit,
+    onGravityWellAdded: () -> Unit,
 ) {
     Canvas(
         modifier = modifier
@@ -188,6 +197,7 @@ private fun SpaceViewport(
             .pointerInput("gravity-wells") {
                 detectTapGestures(onTap = { offset ->
                     engine.wells += GravityWell(offset.x, offset.y, expiresAtNanos = Long.MAX_VALUE)
+                    onGravityWellAdded()
                 })
             },
     ) {
